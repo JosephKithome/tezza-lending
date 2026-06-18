@@ -1,0 +1,1275 @@
+openapi: 3.0.1
+info:
+  title: Tezza Lending Application API
+  description: "Loan products, customer limits, loan disbursement, repayments, overdue\
+    \ sweeps, and notifications."
+  contact:
+    name: Tezza Case Study
+  license:
+    name: Case Study
+  version: v1
+servers:
+- url: http://127.0.0.1:8081
+  description: Generated server url
+paths:
+  /api/v1/products/{id}:
+    get:
+      tags:
+      - product-controller
+      summary: Get one loan product
+      operationId: get
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResponsePayloadProductResponse"
+    put:
+      tags:
+      - product-controller
+      summary: Update a loan product
+      operationId: update
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResponsePayloadProductResponse"
+    delete:
+      tags:
+      - product-controller
+      summary: Delete a loan product
+      operationId: delete
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResponsePayloadVoid"
+  /api/v1/products:
+    get:
+      tags:
+      - product-controller
+      summary: List loan products
+      operationId: list
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+      - name: sortBy
+        in: query
+        required: false
+        schema:
+          type: string
+          default: id
+      - name: sortDirection
+        in: query
+        required: false
+        schema:
+          type: string
+          default: desc
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResponsePayloadPagedResponseProductResponse"
+    post:
+      tags:
+      - product-controller
+      summary: Create a loan product with tenure and fee configuration
+      operationId: create
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResponsePayloadProductResponse"
+  /api/v1/notifications/templates:
+    post:
+      tags:
+      - notification-controller
+      summary: Create a notification template
+      operationId: createTemplate
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TemplateRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResponsePayloadTemplateResponse"
+  /api/v1/notifications/rules:
+    post:
+      tags:
+      - notification-controller
+      summary: Create a notification routing rule
+      operationId: createRule
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RuleRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResponsePayloadRuleResponse"
+  /api/v1/loans:
+    get:
+      tags:
+      - loan-controller
+      summary: List loans
+      operationId: list_2
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+      - name: sortBy
+        in: query
+        required: false
+        schema:
+          type: string
+          default: id
+      - name: sortDirection
+        in: query
+        required: false
+        schema:
+          type: string
+          default: desc
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResponsePayloadPagedResponseLoanResponse"
+    post:
+      tags:
+      - loan-controller
+      summary: Disburse a loan
+      operationId: disburse
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoanRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResponsePayloadLoanResponse"
+  /api/v1/loans/{id}/repayments:
+    post:
+      tags:
+      - loan-controller
+      summary: Record a loan repayment
+      operationId: repay
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RepaymentRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResponsePayloadRepaymentResponse"
+  /api/v1/loans/sweeps/overdue:
+    post:
+      tags:
+      - loan-controller
+      summary: Run the overdue sweep manually for a business date
+      operationId: sweepOverdue
+      parameters:
+      - name: businessDate
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResponsePayloadListLoanResponse"
+  /api/v1/customers:
+    get:
+      tags:
+      - customer-controller
+      summary: List customers
+      operationId: list_3
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+      - name: sortBy
+        in: query
+        required: false
+        schema:
+          type: string
+          default: id
+      - name: sortDirection
+        in: query
+        required: false
+        schema:
+          type: string
+          default: desc
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResponsePayloadPagedResponseCustomerResponse"
+    post:
+      tags:
+      - customer-controller
+      summary: Create a customer profile
+      operationId: create_1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomerRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResponsePayloadCustomerResponse"
+  /api/v1/loans/{id}/write-off:
+    patch:
+      tags:
+      - loan-controller
+      summary: Write off a loan
+      operationId: writeOff
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResponsePayloadLoanResponse"
+  /api/v1/loans/{id}/cancel:
+    patch:
+      tags:
+      - loan-controller
+      summary: Cancel an open or overdue loan
+      operationId: cancel
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResponsePayloadLoanResponse"
+  /api/v1/customers/{id}/loan-limit:
+    patch:
+      tags:
+      - customer-controller
+      summary: Update a customer loan limit
+      operationId: updateLimit
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoanLimitRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResponsePayloadCustomerResponse"
+  /api/v1/notifications:
+    get:
+      tags:
+      - notification-controller
+      summary: List generated notifications
+      operationId: list_1
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+      - name: sortBy
+        in: query
+        required: false
+        schema:
+          type: string
+          default: id
+      - name: sortDirection
+        in: query
+        required: false
+        schema:
+          type: string
+          default: desc
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResponsePayloadPagedResponseNotificationResponse"
+  /api/v1/loans/{id}:
+    get:
+      tags:
+      - loan-controller
+      summary: Get one loan
+      operationId: get_1
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResponsePayloadLoanResponse"
+    delete:
+      tags:
+      - loan-controller
+      summary: Delete a loan without repayments
+      operationId: delete_1
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResponsePayloadVoid"
+  /api/v1/customers/{id}:
+    get:
+      tags:
+      - customer-controller
+      summary: Get one customer
+      operationId: get_2
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResponsePayloadCustomerResponse"
+    delete:
+      tags:
+      - customer-controller
+      summary: Delete a customer profile
+      operationId: delete_2
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResponsePayloadVoid"
+  /api/v1/notifications/{id}:
+    delete:
+      tags:
+      - notification-controller
+      summary: Delete a generated notification
+      operationId: deleteNotification
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResponsePayloadVoid"
+  /api/v1/notifications/templates/{id}:
+    delete:
+      tags:
+      - notification-controller
+      summary: Delete a notification template
+      operationId: deleteTemplate
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResponsePayloadVoid"
+  /api/v1/notifications/rules/{id}:
+    delete:
+      tags:
+      - notification-controller
+      summary: Delete a notification routing rule
+      operationId: deleteRule
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResponsePayloadVoid"
+components:
+  schemas:
+    FeeRequest:
+      required:
+      - applicationStage
+      - calculationType
+      - feeType
+      - value
+      type: object
+      properties:
+        feeType:
+          type: string
+          enum:
+          - SERVICE_FEE
+          - DAILY_FEE
+          - LATE_FEE
+        calculationType:
+          type: string
+          enum:
+          - FIXED
+          - PERCENTAGE
+        applicationStage:
+          type: string
+          enum:
+          - ORIGINATION
+          - POST_DISBURSEMENT
+          - DAILY_ACCRUAL
+          - AFTER_DUE_DATE
+        value:
+          minimum: 0.00
+          exclusiveMinimum: false
+          type: number
+        triggerDaysAfterDue:
+          type: integer
+          format: int32
+    ProductRequest:
+      required:
+      - daysAfterDueForFeeApplication
+      - maximumAmount
+      - minimumAmount
+      - name
+      - tenureUnit
+      - tenureValue
+      type: object
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        minimumAmount:
+          minimum: 0.00
+          exclusiveMinimum: false
+          type: number
+        maximumAmount:
+          minimum: 0.00
+          exclusiveMinimum: false
+          type: number
+        tenureValue:
+          type: integer
+          format: int32
+        tenureUnit:
+          type: string
+          enum:
+          - DAYS
+          - MONTHS
+        daysAfterDueForFeeApplication:
+          type: integer
+          format: int32
+        active:
+          type: boolean
+        fees:
+          type: array
+          items:
+            $ref: "#/components/schemas/FeeRequest"
+    FeeResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        feeType:
+          type: string
+          enum:
+          - SERVICE_FEE
+          - DAILY_FEE
+          - LATE_FEE
+        calculationType:
+          type: string
+          enum:
+          - FIXED
+          - PERCENTAGE
+        applicationStage:
+          type: string
+          enum:
+          - ORIGINATION
+          - POST_DISBURSEMENT
+          - DAILY_ACCRUAL
+          - AFTER_DUE_DATE
+        value:
+          type: number
+        triggerDaysAfterDue:
+          type: integer
+          format: int32
+    Header:
+      type: object
+      properties:
+        requestRefId:
+          type: string
+        responseMessage:
+          type: string
+        responseCode:
+          type: integer
+          format: int32
+        customerMessage:
+          type: string
+        timestamp:
+          type: string
+    ProductResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        code:
+          type: string
+        name:
+          type: string
+        minimumAmount:
+          type: number
+        maximumAmount:
+          type: number
+        tenureValue:
+          type: integer
+          format: int32
+        tenureUnit:
+          type: string
+          enum:
+          - DAYS
+          - MONTHS
+        daysAfterDueForFeeApplication:
+          type: integer
+          format: int32
+        active:
+          type: boolean
+        fees:
+          type: array
+          items:
+            $ref: "#/components/schemas/FeeResponse"
+    ResponsePayloadProductResponse:
+      type: object
+      properties:
+        header:
+          $ref: "#/components/schemas/Header"
+        body:
+          $ref: "#/components/schemas/ProductResponse"
+    TemplateRequest:
+      required:
+      - body
+      - channel
+      - eventType
+      - subject
+      type: object
+      properties:
+        eventType:
+          type: string
+          enum:
+          - CUSTOMER_REGISTERED
+          - LOAN_CREATED
+          - LOAN_DISBURSED
+          - DUE_DATE_REMINDER
+          - REPAYMENT_ACKNOWLEDGEMENT
+          - LOAN_FULLY_REPAID
+          - OVERDUE_NOTICE
+        channel:
+          type: string
+          enum:
+          - EMAIL
+          - SMS
+          - PUSH
+        subject:
+          type: string
+        body:
+          type: string
+        active:
+          type: boolean
+    ResponsePayloadTemplateResponse:
+      type: object
+      properties:
+        header:
+          $ref: "#/components/schemas/Header"
+        body:
+          $ref: "#/components/schemas/TemplateResponse"
+    TemplateResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        eventType:
+          type: string
+          enum:
+          - CUSTOMER_REGISTERED
+          - LOAN_CREATED
+          - LOAN_DISBURSED
+          - DUE_DATE_REMINDER
+          - REPAYMENT_ACKNOWLEDGEMENT
+          - LOAN_FULLY_REPAID
+          - OVERDUE_NOTICE
+        channel:
+          type: string
+          enum:
+          - EMAIL
+          - SMS
+          - PUSH
+        subject:
+          type: string
+        body:
+          type: string
+        active:
+          type: boolean
+    RuleRequest:
+      required:
+      - channel
+      - eventType
+      type: object
+      properties:
+        eventType:
+          type: string
+          enum:
+          - CUSTOMER_REGISTERED
+          - LOAN_CREATED
+          - LOAN_DISBURSED
+          - DUE_DATE_REMINDER
+          - REPAYMENT_ACKNOWLEDGEMENT
+          - LOAN_FULLY_REPAID
+          - OVERDUE_NOTICE
+        productCode:
+          type: string
+        customerSegment:
+          type: string
+        channel:
+          type: string
+          enum:
+          - EMAIL
+          - SMS
+          - PUSH
+        active:
+          type: boolean
+    ResponsePayloadRuleResponse:
+      type: object
+      properties:
+        header:
+          $ref: "#/components/schemas/Header"
+        body:
+          $ref: "#/components/schemas/RuleResponse"
+    RuleResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        eventType:
+          type: string
+          enum:
+          - CUSTOMER_REGISTERED
+          - LOAN_CREATED
+          - LOAN_DISBURSED
+          - DUE_DATE_REMINDER
+          - REPAYMENT_ACKNOWLEDGEMENT
+          - LOAN_FULLY_REPAID
+          - OVERDUE_NOTICE
+        productCode:
+          type: string
+        customerSegment:
+          type: string
+        channel:
+          type: string
+          enum:
+          - EMAIL
+          - SMS
+          - PUSH
+        active:
+          type: boolean
+    LoanRequest:
+      required:
+      - customerId
+      - principalAmount
+      - productId
+      type: object
+      properties:
+        customerId:
+          type: integer
+          format: int64
+        productId:
+          type: integer
+          format: int64
+        principalAmount:
+          minimum: 1.00
+          exclusiveMinimum: false
+          type: number
+        structure:
+          type: string
+          enum:
+          - LUMP_SUM
+          - INSTALLMENT
+        installmentCount:
+          type: integer
+          format: int32
+        consolidatedBilling:
+          type: boolean
+        consolidatedDueDate:
+          type: string
+          format: date
+    InstallmentResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        installmentNumber:
+          type: integer
+          format: int32
+        dueDate:
+          type: string
+          format: date
+        amountDue:
+          type: number
+        amountPaid:
+          type: number
+        paid:
+          type: boolean
+    LoanResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        loanNumber:
+          type: string
+        customerId:
+          type: integer
+          format: int64
+        productId:
+          type: integer
+          format: int64
+        structure:
+          type: string
+          enum:
+          - LUMP_SUM
+          - INSTALLMENT
+        status:
+          type: string
+          enum:
+          - OPEN
+          - CLOSED
+          - CANCELLED
+          - OVERDUE
+          - WRITTEN_OFF
+        principalAmount:
+          type: number
+        outstandingAmount:
+          type: number
+        totalFeesApplied:
+          type: number
+        originationDate:
+          type: string
+          format: date
+        dueDate:
+          type: string
+          format: date
+        consolidatedBilling:
+          type: boolean
+        consolidatedDueDate:
+          type: string
+          format: date
+        lastFeeAccrualDate:
+          type: string
+          format: date
+        lateFeeApplied:
+          type: boolean
+        installments:
+          type: array
+          items:
+            $ref: "#/components/schemas/InstallmentResponse"
+    ResponsePayloadLoanResponse:
+      type: object
+      properties:
+        header:
+          $ref: "#/components/schemas/Header"
+        body:
+          $ref: "#/components/schemas/LoanResponse"
+    RepaymentRequest:
+      required:
+      - amount
+      type: object
+      properties:
+        amount:
+          minimum: 0.01
+          exclusiveMinimum: false
+          type: number
+        channel:
+          type: string
+        externalReference:
+          type: string
+    RepaymentResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        loanNumber:
+          type: string
+        amount:
+          type: number
+        appliedAmount:
+          type: number
+        overpaymentAmount:
+          type: number
+        channel:
+          type: string
+        externalReference:
+          type: string
+        paidAt:
+          type: string
+          format: date-time
+    ResponsePayloadRepaymentResponse:
+      type: object
+      properties:
+        header:
+          $ref: "#/components/schemas/Header"
+        body:
+          $ref: "#/components/schemas/RepaymentResponse"
+    ResponsePayloadListLoanResponse:
+      type: object
+      properties:
+        header:
+          $ref: "#/components/schemas/Header"
+        body:
+          type: array
+          items:
+            $ref: "#/components/schemas/LoanResponse"
+    CustomerRequest:
+      required:
+      - email
+      - firstName
+      - lastName
+      - phoneNumber
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+        phoneNumber:
+          type: string
+        dateOfBirth:
+          type: string
+          format: date
+        loanLimit:
+          minimum: 0.00
+          exclusiveMinimum: false
+          type: number
+        riskGrade:
+          type: string
+        preferredNotificationChannel:
+          type: string
+    CustomerResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        customerNumber:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+        phoneNumber:
+          type: string
+        dateOfBirth:
+          type: string
+          format: date
+        loanLimit:
+          type: number
+        riskGrade:
+          type: string
+        preferredNotificationChannel:
+          type: string
+        registrationOtpExpiresAt:
+          type: string
+          format: date-time
+    ResponsePayloadCustomerResponse:
+      type: object
+      properties:
+        header:
+          $ref: "#/components/schemas/Header"
+        body:
+          $ref: "#/components/schemas/CustomerResponse"
+    LoanLimitRequest:
+      required:
+      - loanLimit
+      type: object
+      properties:
+        loanLimit:
+          minimum: 0.00
+          exclusiveMinimum: false
+          type: number
+    PagedResponseProductResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductResponse"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+        first:
+          type: boolean
+        last:
+          type: boolean
+        empty:
+          type: boolean
+    ResponsePayloadPagedResponseProductResponse:
+      type: object
+      properties:
+        header:
+          $ref: "#/components/schemas/Header"
+        body:
+          $ref: "#/components/schemas/PagedResponseProductResponse"
+    NotificationResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        customerId:
+          type: integer
+          format: int64
+        loanId:
+          type: integer
+          format: int64
+        eventType:
+          type: string
+          enum:
+          - CUSTOMER_REGISTERED
+          - LOAN_CREATED
+          - LOAN_DISBURSED
+          - DUE_DATE_REMINDER
+          - REPAYMENT_ACKNOWLEDGEMENT
+          - LOAN_FULLY_REPAID
+          - OVERDUE_NOTICE
+        channel:
+          type: string
+          enum:
+          - EMAIL
+          - SMS
+          - PUSH
+        status:
+          type: string
+          enum:
+          - QUEUED
+          - SENT
+          - FAILED
+        recipient:
+          type: string
+        subject:
+          type: string
+        message:
+          type: string
+        deliveryDetail:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        sentAt:
+          type: string
+          format: date-time
+    PagedResponseNotificationResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/NotificationResponse"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+        first:
+          type: boolean
+        last:
+          type: boolean
+        empty:
+          type: boolean
+    ResponsePayloadPagedResponseNotificationResponse:
+      type: object
+      properties:
+        header:
+          $ref: "#/components/schemas/Header"
+        body:
+          $ref: "#/components/schemas/PagedResponseNotificationResponse"
+    PagedResponseLoanResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/LoanResponse"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+        first:
+          type: boolean
+        last:
+          type: boolean
+        empty:
+          type: boolean
+    ResponsePayloadPagedResponseLoanResponse:
+      type: object
+      properties:
+        header:
+          $ref: "#/components/schemas/Header"
+        body:
+          $ref: "#/components/schemas/PagedResponseLoanResponse"
+    PagedResponseCustomerResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/CustomerResponse"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+        first:
+          type: boolean
+        last:
+          type: boolean
+        empty:
+          type: boolean
+    ResponsePayloadPagedResponseCustomerResponse:
+      type: object
+      properties:
+        header:
+          $ref: "#/components/schemas/Header"
+        body:
+          $ref: "#/components/schemas/PagedResponseCustomerResponse"
+    ResponsePayloadVoid:
+      type: object
+      properties:
+        header:
+          $ref: "#/components/schemas/Header"
+        body:
+          type: object
