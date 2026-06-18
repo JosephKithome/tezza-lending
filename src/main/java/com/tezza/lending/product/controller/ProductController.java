@@ -6,6 +6,8 @@ import com.tezza.lending.product.service.ProductService;
 import com.tezza.lending.shared.PageableFactory;
 import com.tezza.lending.shared.RequestContext;
 import com.tezza.lending.shared.ResponsePayload;
+import io.github.bucket4j.Bandwidth;
+import io.github.bucket4j.Bucket;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
@@ -22,10 +24,18 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Duration;
+
 @RestController
 @RequestMapping("/api/v1/products")
 public class ProductController {
     private static final Logger log = LoggerFactory.getLogger(ProductController.class);
+    private final Bucket bucket = Bucket.builder()
+            .addLimit(Bandwidth.builder()
+                    .capacity(300)
+                    .refillGreedy(300, Duration.ofSeconds(1))
+                    .build())
+            .build();
 
     private final ProductService productService;
 
@@ -36,7 +46,10 @@ public class ProductController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Create a loan product with tenure and fee configuration")
-    public ResponsePayload create(@Valid @RequestBody ProductRequest request) {
+    public Object create(@Valid @RequestBody ProductRequest request) {
+        if (rateLimitExceeded()) {
+            return Helper.tooManyRequests();
+        }
         ResponsePayload response = ResponsePayload.created(
                 RequestContext.requestId(),
                 "Product created",
@@ -47,7 +60,10 @@ public class ProductController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Update a loan product")
-    public ResponsePayload update(@PathVariable Long id, @Valid @RequestBody ProductRequest request) {
+    public Object update(@PathVariable Long id, @Valid @RequestBody ProductRequest request) {
+        if (rateLimitExceeded()) {
+            return Helper.tooManyRequests();
+        }
         ResponsePayload response = ResponsePayload.ok(
                 RequestContext.requestId(),
                 "Product updated",
@@ -58,7 +74,10 @@ public class ProductController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Get one loan product")
-    public ResponsePayload get(@PathVariable Long id) {
+    public Object get(@PathVariable Long id) {
+        if (rateLimitExceeded()) {
+            return Helper.tooManyRequests();
+        }
         ResponsePayload response = ResponsePayload.ok(
                 RequestContext.requestId(),
                 "Product found",
@@ -69,12 +88,15 @@ public class ProductController {
 
     @GetMapping
     @Operation(summary = "List loan products")
-    public ResponsePayload list(
+    public Object list(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "id") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDirection) {
         String requestPayload = PageableFactory.requestPayload(page, size, sortBy, sortDirection);
+        if (rateLimitExceeded()) {
+            return Helper.tooManyRequests();
+        }
         ResponsePayload response = ResponsePayload.ok(
                 RequestContext.requestId(),
                 "Products found",
@@ -85,7 +107,10 @@ public class ProductController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete a loan product")
-    public ResponsePayload delete(@PathVariable Long id) {
+    public Object delete(@PathVariable Long id) {
+        if (rateLimitExceeded()) {
+            return Helper.tooManyRequests();
+        }
         productService.delete(id);
         ResponsePayload response = ResponsePayload.ok(
                 RequestContext.requestId(),
@@ -93,5 +118,13 @@ public class ProductController {
                 null);
         Helper.logger(log, "DELETE", "/api/v1/products/" + id, HttpStatus.OK.value(), "id=" + id, response);
         return response;
+    }
+
+    private boolean rateLimitExceeded() {
+        if (bucket.tryConsume(1)) {
+            return false;
+        }
+        log.warn("Rate limit exceeded");
+        return true;
     }
 }

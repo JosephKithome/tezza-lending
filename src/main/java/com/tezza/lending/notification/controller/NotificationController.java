@@ -7,6 +7,8 @@ import com.tezza.lending.notification.service.NotificationService;
 import com.tezza.lending.shared.PageableFactory;
 import com.tezza.lending.shared.RequestContext;
 import com.tezza.lending.shared.ResponsePayload;
+import io.github.bucket4j.Bandwidth;
+import io.github.bucket4j.Bucket;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
@@ -22,10 +24,18 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Duration;
+
 @RestController
 @RequestMapping("/api/v1/notifications")
 public class NotificationController {
     private static final Logger log = LoggerFactory.getLogger(NotificationController.class);
+    private final Bucket bucket = Bucket.builder()
+            .addLimit(Bandwidth.builder()
+                    .capacity(300)
+                    .refillGreedy(300, Duration.ofSeconds(1))
+                    .build())
+            .build();
 
     private final NotificationService notificationService;
 
@@ -36,7 +46,10 @@ public class NotificationController {
     @PostMapping("/templates")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Create a notification template")
-    public ResponsePayload createTemplate(@Valid @RequestBody TemplateRequest request) {
+    public Object createTemplate(@Valid @RequestBody TemplateRequest request) {
+        if (rateLimitExceeded()) {
+            return Helper.tooManyRequests();
+        }
         ResponsePayload response = ResponsePayload.created(
                 RequestContext.requestId(),
                 "Template created",
@@ -48,7 +61,10 @@ public class NotificationController {
     @PostMapping("/rules")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Create a notification routing rule")
-    public ResponsePayload createRule(@Valid @RequestBody RuleRequest request) {
+    public Object createRule(@Valid @RequestBody RuleRequest request) {
+        if (rateLimitExceeded()) {
+            return Helper.tooManyRequests();
+        }
         ResponsePayload response = ResponsePayload.created(
                 RequestContext.requestId(),
                 "Rule created",
@@ -59,12 +75,15 @@ public class NotificationController {
 
     @GetMapping
     @Operation(summary = "List generated notifications")
-    public ResponsePayload list(
+    public Object list(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "id") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDirection) {
         String requestPayload = PageableFactory.requestPayload(page, size, sortBy, sortDirection);
+        if (rateLimitExceeded()) {
+            return Helper.tooManyRequests();
+        }
         ResponsePayload response = ResponsePayload.ok(
                 RequestContext.requestId(),
                 "Notifications found",
@@ -75,7 +94,10 @@ public class NotificationController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete a generated notification")
-    public ResponsePayload deleteNotification(@PathVariable Long id) {
+    public Object deleteNotification(@PathVariable Long id) {
+        if (rateLimitExceeded()) {
+            return Helper.tooManyRequests();
+        }
         notificationService.deleteNotification(id);
         ResponsePayload response = ResponsePayload.ok(
                 RequestContext.requestId(),
@@ -87,7 +109,10 @@ public class NotificationController {
 
     @DeleteMapping("/templates/{id}")
     @Operation(summary = "Delete a notification template")
-    public ResponsePayload deleteTemplate(@PathVariable Long id) {
+    public Object deleteTemplate(@PathVariable Long id) {
+        if (rateLimitExceeded()) {
+            return Helper.tooManyRequests();
+        }
         notificationService.deleteTemplate(id);
         ResponsePayload response = ResponsePayload.ok(
                 RequestContext.requestId(),
@@ -99,7 +124,10 @@ public class NotificationController {
 
     @DeleteMapping("/rules/{id}")
     @Operation(summary = "Delete a notification routing rule")
-    public ResponsePayload deleteRule(@PathVariable Long id) {
+    public Object deleteRule(@PathVariable Long id) {
+        if (rateLimitExceeded()) {
+            return Helper.tooManyRequests();
+        }
         notificationService.deleteRule(id);
         ResponsePayload response = ResponsePayload.ok(
                 RequestContext.requestId(),
@@ -107,5 +135,13 @@ public class NotificationController {
                 null);
         Helper.logger(log, "DELETE", "/api/v1/notifications/rules/" + id, HttpStatus.OK.value(), "id=" + id, response);
         return response;
+    }
+
+    private boolean rateLimitExceeded() {
+        if (bucket.tryConsume(1)) {
+            return false;
+        }
+        log.warn("Rate limit exceeded");
+        return true;
     }
 }

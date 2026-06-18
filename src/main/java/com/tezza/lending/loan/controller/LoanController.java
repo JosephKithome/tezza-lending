@@ -7,6 +7,8 @@ import com.tezza.lending.logging.Helper;
 import com.tezza.lending.shared.PageableFactory;
 import com.tezza.lending.shared.RequestContext;
 import com.tezza.lending.shared.ResponsePayload;
+import io.github.bucket4j.Bandwidth;
+import io.github.bucket4j.Bucket;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
@@ -24,12 +26,19 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Duration;
 import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api/v1/loans")
 public class LoanController {
     private static final Logger log = LoggerFactory.getLogger(LoanController.class);
+    private final Bucket bucket = Bucket.builder()
+            .addLimit(Bandwidth.builder()
+                    .capacity(300)
+                    .refillGreedy(300, Duration.ofSeconds(1))
+                    .build())
+            .build();
 
     private final LoanService loanService;
 
@@ -40,7 +49,10 @@ public class LoanController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Disburse a loan")
-    public ResponsePayload disburse(@Valid @RequestBody LoanRequest request) {
+    public Object disburse(@Valid @RequestBody LoanRequest request) {
+        if (rateLimitExceeded()) {
+            return Helper.tooManyRequests();
+        }
         ResponsePayload response = ResponsePayload.created(
                 RequestContext.requestId(),
                 "Loan disbursed",
@@ -52,9 +64,12 @@ public class LoanController {
     @PostMapping("/{id}/repayments")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Record a loan repayment")
-    public ResponsePayload repay(
+    public Object repay(
             @PathVariable Long id,
             @Valid @RequestBody RepaymentRequest request) {
+        if (rateLimitExceeded()) {
+            return Helper.tooManyRequests();
+        }
         ResponsePayload response = ResponsePayload.created(
                 RequestContext.requestId(),
                 "Repayment recorded",
@@ -65,7 +80,10 @@ public class LoanController {
 
     @PatchMapping("/{id}/cancel")
     @Operation(summary = "Cancel an open or overdue loan")
-    public ResponsePayload cancel(@PathVariable Long id) {
+    public Object cancel(@PathVariable Long id) {
+        if (rateLimitExceeded()) {
+            return Helper.tooManyRequests();
+        }
         ResponsePayload response = ResponsePayload.ok(
                 RequestContext.requestId(),
                 "Loan cancelled",
@@ -76,7 +94,10 @@ public class LoanController {
 
     @PatchMapping("/{id}/write-off")
     @Operation(summary = "Write off a loan")
-    public ResponsePayload writeOff(@PathVariable Long id) {
+    public Object writeOff(@PathVariable Long id) {
+        if (rateLimitExceeded()) {
+            return Helper.tooManyRequests();
+        }
         ResponsePayload response = ResponsePayload.ok(
                 RequestContext.requestId(),
                 "Loan written off",
@@ -87,9 +108,12 @@ public class LoanController {
 
     @PostMapping("/sweeps/overdue")
     @Operation(summary = "Run the overdue sweep manually for a business date")
-    public ResponsePayload sweepOverdue(
+    public Object sweepOverdue(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate businessDate) {
         LocalDate date = businessDate == null ? LocalDate.now() : businessDate;
+        if (rateLimitExceeded()) {
+            return Helper.tooManyRequests();
+        }
         ResponsePayload response = ResponsePayload.ok(
                 RequestContext.requestId(),
                 "Overdue sweep completed",
@@ -100,10 +124,13 @@ public class LoanController {
 
     @PostMapping("/sweeps/due-reminders")
     @Operation(summary = "Send due date reminders for loans due soon")
-    public ResponsePayload sendDueDateReminders(
+    public Object sendDueDateReminders(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate businessDate,
             @RequestParam(defaultValue = "3") int daysAhead) {
         LocalDate date = businessDate == null ? LocalDate.now() : businessDate;
+        if (rateLimitExceeded()) {
+            return Helper.tooManyRequests();
+        }
         ResponsePayload response = ResponsePayload.ok(
                 RequestContext.requestId(),
                 "Due date reminders completed",
@@ -115,7 +142,10 @@ public class LoanController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Get one loan")
-    public ResponsePayload get(@PathVariable Long id) {
+    public Object get(@PathVariable Long id) {
+        if (rateLimitExceeded()) {
+            return Helper.tooManyRequests();
+        }
         ResponsePayload response = ResponsePayload.ok(
                 RequestContext.requestId(),
                 "Loan found",
@@ -126,12 +156,15 @@ public class LoanController {
 
     @GetMapping
     @Operation(summary = "List loans")
-    public ResponsePayload list(
+    public Object list(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "id") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDirection) {
         String requestPayload = PageableFactory.requestPayload(page, size, sortBy, sortDirection);
+        if (rateLimitExceeded()) {
+            return Helper.tooManyRequests();
+        }
         ResponsePayload response = ResponsePayload.ok(
                 RequestContext.requestId(),
                 "Loans found",
@@ -142,7 +175,10 @@ public class LoanController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete a loan without repayments")
-    public ResponsePayload delete(@PathVariable Long id) {
+    public Object delete(@PathVariable Long id) {
+        if (rateLimitExceeded()) {
+            return Helper.tooManyRequests();
+        }
         loanService.delete(id);
         ResponsePayload response = ResponsePayload.ok(
                 RequestContext.requestId(),
@@ -150,5 +186,13 @@ public class LoanController {
                 null);
         Helper.logger(log, "DELETE", "/api/v1/loans/" + id, HttpStatus.OK.value(), "id=" + id, response);
         return response;
+    }
+
+    private boolean rateLimitExceeded() {
+        if (bucket.tryConsume(1)) {
+            return false;
+        }
+        log.warn("Rate limit exceeded");
+        return true;
     }
 }

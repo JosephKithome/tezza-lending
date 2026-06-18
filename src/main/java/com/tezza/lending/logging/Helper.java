@@ -4,7 +4,10 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.tezza.lending.shared.RequestContext;
+import com.tezza.lending.shared.ResponsePayload;
 import org.slf4j.Logger;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 
 import java.time.OffsetDateTime;
@@ -26,6 +29,20 @@ public class Helper {
 
     public Helper(ObjectMapper mapper) {
         Helper.mapper = mapper;
+    }
+
+    public static ResponseEntity<ResponsePayload> tooManyRequests() {
+        return ResponseEntity
+                .status(HttpStatus.TOO_MANY_REQUESTS)
+                .body(ResponsePayload.error(
+                        RequestContext.requestId(),
+                        "Rate limit exceeded",
+                        HttpStatus.TOO_MANY_REQUESTS.value(),
+                        null));
+    }
+
+    public static String objectToString(Object value) {
+        return payload(value);
     }
 
     // Author: Joseph Kithome | Date: 18/Jun/2026 | Global inline API exchange logger helper.
