@@ -98,6 +98,21 @@ public class LoanController {
         return response;
     }
 
+    @PostMapping("/sweeps/due-reminders")
+    @Operation(summary = "Send due date reminders for loans due soon")
+    public ResponsePayload sendDueDateReminders(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate businessDate,
+            @RequestParam(defaultValue = "3") int daysAhead) {
+        LocalDate date = businessDate == null ? LocalDate.now() : businessDate;
+        ResponsePayload response = ResponsePayload.ok(
+                RequestContext.requestId(),
+                "Due date reminders completed",
+                loanService.sendDueDateReminders(date, daysAhead));
+        String requestPayload = "businessDate=" + date + ", daysAhead=" + daysAhead;
+        Helper.logger(log, "POST", "/api/v1/loans/sweeps/due-reminders", HttpStatus.OK.value(), requestPayload, response);
+        return response;
+    }
+
     @GetMapping("/{id}")
     @Operation(summary = "Get one loan")
     public ResponsePayload get(@PathVariable Long id) {

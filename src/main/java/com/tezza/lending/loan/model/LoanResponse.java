@@ -20,6 +20,7 @@ public record LoanResponse(
         LocalDate consolidatedDueDate,
         LocalDate lastFeeAccrualDate,
         boolean lateFeeApplied,
+        boolean dueDateReminderSent,
         List<InstallmentResponse> installments
 ) {
     public static LoanResponse from(Loan loan) {
@@ -39,6 +40,7 @@ public record LoanResponse(
                 loan.getConsolidatedDueDate(),
                 loan.getLastFeeAccrualDate(),
                 loan.isLateFeeApplied(),
+                loan.isDueDateReminderSent(),
                 loan.getInstallments().stream().map(InstallmentResponse::from).toList());
     }
 }

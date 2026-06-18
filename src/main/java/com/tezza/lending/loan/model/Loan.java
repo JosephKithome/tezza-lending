@@ -46,6 +46,7 @@ public class Loan {
     private boolean consolidatedBilling;
     private LocalDate lastFeeAccrualDate;
     private boolean lateFeeApplied;
+    private boolean dueDateReminderSent;
 
     @OneToMany(mappedBy = "loan", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<LoanInstallment> installments = new ArrayList<>();
@@ -164,6 +165,14 @@ public class Loan {
 
     public void setLateFeeApplied(boolean lateFeeApplied) {
         this.lateFeeApplied = lateFeeApplied;
+    }
+
+    public boolean isDueDateReminderSent() {
+        return dueDateReminderSent;
+    }
+
+    public void setDueDateReminderSent(boolean dueDateReminderSent) {
+        this.dueDateReminderSent = dueDateReminderSent;
     }
 
     public List<LoanInstallment> getInstallments() {

@@ -72,6 +72,10 @@ public class LoanServiceImpl implements LoanService {
 
         BigDecimal originationFees = fees(product, request.principalAmount(), FeeApplicationStage.ORIGINATION);
         BigDecimal openingBalance = request.principalAmount().add(originationFees).setScale(2, RoundingMode.HALF_UP);
+        LocalDate originationDate = LocalDate.now();
+        LocalDate dueDate = request.consolidatedBilling()
+                ? consolidatedDueDate(customer.getId(), request.consolidatedDueDate(), resolveDueDate(originationDate, product))
+                : resolveDueDate(originationDate, product);
 
         Loan loan = new Loan();
         loan.setLoanNumber(generateLoanNumber());
@@ -82,13 +86,12 @@ public class LoanServiceImpl implements LoanService {
         loan.setPrincipalAmount(request.principalAmount());
         loan.setOutstandingAmount(openingBalance);
         loan.setTotalFeesApplied(originationFees);
-        loan.setOriginationDate(LocalDate.now());
-        loan.setDueDate(resolveDueDate(LocalDate.now(), product));
+        loan.setOriginationDate(originationDate);
+        loan.setDueDate(dueDate);
         loan.setConsolidatedBilling(request.consolidatedBilling());
-        loan.setConsolidatedDueDate(request.consolidatedBilling() && request.consolidatedDueDate() == null
-                ? loan.getDueDate()
-                : request.consolidatedDueDate());
+        loan.setConsolidatedDueDate(request.consolidatedBilling() ? dueDate : null);
         loan.setLateFeeApplied(false);
+        loan.setDueDateReminderSent(false);
         buildInstallments(loan, request.installmentCount());
 
         Loan saved = loanRepository.save(loan);
@@ -186,9 +189,8 @@ public class LoanServiceImpl implements LoanService {
         for (Loan loan : dueLoans) {
             loan.setStatus(LoanStatus.OVERDUE);
             applyDailyAccrualIfNeeded(loan, businessDate);
-            int triggerDays = loan.getProduct().getDaysAfterDueForFeeApplication();
-            if (!loan.isLateFeeApplied() && !businessDate.isBefore(loan.getDueDate().plusDays(triggerDays))) {
-                BigDecimal lateFees = fees(loan.getProduct(), loan.getOutstandingAmount(), FeeApplicationStage.AFTER_DUE_DATE);
+            if (!loan.isLateFeeApplied()) {
+                BigDecimal lateFees = lateFees(loan, businessDate);
                 if (lateFees.compareTo(BigDecimal.ZERO) > 0) {
                     loan.setOutstandingAmount(loan.getOutstandingAmount().add(lateFees).setScale(2, RoundingMode.HALF_UP));
                     loan.setTotalFeesApplied(loan.getTotalFeesApplied().add(lateFees).setScale(2, RoundingMode.HALF_UP));
@@ -196,6 +198,22 @@ public class LoanServiceImpl implements LoanService {
                 }
             }
             notificationService.publish(NotificationEventType.OVERDUE_NOTICE, loan.getCustomer(), loan);
+        }
+        return loanRepository.saveAll(dueLoans).stream().map(LoanResponse::from).toList();
+    }
+
+    @Override
+    public List<LoanResponse> sendDueDateReminders(LocalDate businessDate, int daysAhead) {
+        if (daysAhead < 0) {
+            throw new BusinessRuleException("daysAhead cannot be negative");
+        }
+        List<Loan> dueLoans = loanRepository.findByStatusAndDueDateBetweenAndDueDateReminderSentFalse(
+                LoanStatus.OPEN,
+                businessDate,
+                businessDate.plusDays(daysAhead));
+        for (Loan loan : dueLoans) {
+            notificationService.publish(NotificationEventType.DUE_DATE_REMINDER, loan.getCustomer(), loan);
+            loan.setDueDateReminderSent(true);
         }
         return loanRepository.saveAll(dueLoans).stream().map(LoanResponse::from).toList();
     }
@@ -283,6 +301,18 @@ public class LoanServiceImpl implements LoanService {
         return startDate.plusDays(product.getTenureValue());
     }
 
+    private LocalDate consolidatedDueDate(Long customerId, LocalDate requestedDueDate, LocalDate defaultDueDate) {
+        if (requestedDueDate != null) {
+            return requestedDueDate;
+        }
+        return loanRepository
+                .findFirstByCustomerIdAndConsolidatedBillingTrueAndStatusInOrderByConsolidatedDueDateDesc(
+                        customerId,
+                        List.of(LoanStatus.OPEN, LoanStatus.OVERDUE))
+                .map(Loan::getConsolidatedDueDate)
+                .orElse(defaultDueDate);
+    }
+
     private BigDecimal fees(LoanProduct product, BigDecimal basis, FeeApplicationStage stage) {
         return product.getFees().stream()
                 .filter(fee -> fee.getApplicationStage() == stage)
@@ -294,6 +324,24 @@ public class LoanServiceImpl implements LoanService {
                         : fee.getValue())
                 .reduce(BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP), BigDecimal::add)
                 .setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal lateFees(Loan loan, LocalDate businessDate) {
+        return loan.getProduct().getFees().stream()
+                .filter(fee -> fee.getApplicationStage() == FeeApplicationStage.AFTER_DUE_DATE)
+                .filter(fee -> fee.getFeeType() == FeeType.LATE_FEE)
+                .filter(fee -> !businessDate.isBefore(loan.getDueDate().plusDays(lateFeeTriggerDays(loan.getProduct(), fee))))
+                .map(fee -> fee.getCalculationType() == FeeCalculationType.PERCENTAGE
+                        ? loan.getOutstandingAmount().multiply(fee.getValue()).divide(ONE_HUNDRED, 2, RoundingMode.HALF_UP)
+                        : fee.getValue())
+                .reduce(BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP), BigDecimal::add)
+                .setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private int lateFeeTriggerDays(LoanProduct product, ProductFee fee) {
+        return fee.getTriggerDaysAfterDue() == null
+                ? product.getDaysAfterDueForFeeApplication()
+                : fee.getTriggerDaysAfterDue();
     }
 
     private void applyDailyAccrualIfNeeded(Loan loan, LocalDate businessDate) {

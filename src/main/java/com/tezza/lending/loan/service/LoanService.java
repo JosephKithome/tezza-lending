@@ -21,6 +21,8 @@ public interface LoanService {
 
     List<LoanResponse> sweepOverdue(LocalDate businessDate);
 
+    List<LoanResponse> sendDueDateReminders(LocalDate businessDate, int daysAhead);
+
     LoanResponse get(Long id);
 
     PagedResponse list(Pageable pageable);

@@ -39,11 +39,9 @@ springdoc:
     path: /v3/api-docs
 
 lending:
-  logging:
-    source-system: TEZZA-LENDING-API
-    target-system: LENDING-CORE
   sweep:
     overdue-cron: "0 0/10 * * * *"
+    due-reminder-cron: "0 5 8 * * *"
   notifications:
     email:
       enabled: ${GMAIL_NOTIFICATIONS_ENABLED:true}

@@ -28,4 +28,9 @@ public class OverdueLoanSweepJob {
     public void sweep() {
         loanService.sweepOverdue(LocalDate.now());
     }
+
+    @Scheduled(cron = "${lending.sweep.due-reminder-cron}")
+    public void sendDueDateReminders() {
+        loanService.sendDueDateReminders(LocalDate.now(), 3);
+    }
 }

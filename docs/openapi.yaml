@@ -276,6 +276,33 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/ResponsePayloadListLoanResponse"
+  /api/v1/loans/sweeps/due-reminders:
+    post:
+      tags:
+      - loan-controller
+      summary: Send due date reminders for loans due soon
+      operationId: sendDueDateReminders
+      parameters:
+      - name: businessDate
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: daysAhead
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 3
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResponsePayloadListLoanResponse"
   /api/v1/customers:
     get:
       tags:
@@ -957,6 +984,8 @@ components:
           type: string
           format: date
         lateFeeApplied:
+          type: boolean
+        dueDateReminderSent:
           type: boolean
         installments:
           type: array

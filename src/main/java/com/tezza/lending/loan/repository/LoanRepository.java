@@ -15,6 +15,15 @@ public interface LoanRepository extends JpaRepository<Loan, Long> {
 
     List<Loan> findByCustomerId(Long customerId);
 
+    List<Loan> findByStatusAndDueDateBetweenAndDueDateReminderSentFalse(
+            LoanStatus status,
+            LocalDate startDate,
+            LocalDate endDate);
+
+    Optional<Loan> findFirstByCustomerIdAndConsolidatedBillingTrueAndStatusInOrderByConsolidatedDueDateDesc(
+            Long customerId,
+            List<LoanStatus> statuses);
+
     long countByCustomerId(Long customerId);
 
     long countByProductId(Long productId);

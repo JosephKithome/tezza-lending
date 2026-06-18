@@ -1,0 +1,2 @@
+ALTER TABLE loans
+ADD COLUMN due_date_reminder_sent BOOLEAN NOT NULL DEFAULT FALSE;
