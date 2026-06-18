@@ -7,9 +7,63 @@ Spring Boot lending case study implementing product configuration, customer prof
 - JDK 17+
 - Maven 3.9+
 
-## Run
+## Steps to Run
+
+1. Clone the repository and enter the project folder:
 
 ```bash
+git clone <repository-url>
+cd Loans
+```
+
+2. Run the tests:
+
+```bash
+mvn test
+```
+
+3. Start the application with the default file-based H2 database:
+
+```bash
+mvn spring-boot:run
+```
+
+4. Open the application documentation:
+
+- Swagger UI: `http://localhost:8080/swagger-ui.html`
+- OpenAPI JSON: `http://localhost:8080/v3/api-docs`
+- H2 console: `http://localhost:8080/h2-console`
+
+5. Use these H2 console values:
+
+- JDBC URL: `jdbc:h2:file:./data/lending-db`
+- Username: `sa`
+- Password: leave blank
+
+6. Optional: run with in-memory H2 when you want a clean database on every restart:
+
+```bash
+SPRING_PROFILES_ACTIVE=h2-memory mvn spring-boot:run
+```
+
+7. Optional: run with PostgreSQL:
+
+```bash
+export SPRING_PROFILES_ACTIVE=postgres
+export POSTGRES_JDBC_URL="jdbc:postgresql://localhost:5432/tezza_lending"
+export POSTGRES_USERNAME="postgres"
+export POSTGRES_PASSWORD="postgres"
+
+mvn spring-boot:run
+```
+
+8. Optional: enable Gmail email delivery before starting the app:
+
+```bash
+export GMAIL_USERNAME="your-gmail-address@gmail.com"
+export GMAIL_APP_PASSWORD="your-16-character-app-password"
+export GMAIL_FROM="your-gmail-address@gmail.com"
+
 mvn spring-boot:run
 ```
 
@@ -111,7 +165,7 @@ Services are exposed through interfaces and implemented with Spring-managed clas
 Every HTTP request is logged with this format:
 
 ```text
-SourceSystem ={} || TargetSystem={} || RequestId={} || RequestPayload={} || ResponsePayload={} || Method={} || Path={} || Status={}
+SourceSystem ={} || TargetSystem={} || RequestId={} || RequestTime={} || RequestPayload={} || ResponsePayload={} || Method={} || Path={} || Status={}
 ```
 
 Clients can send `X-Request-Id`; otherwise the API generates one and returns it in the response header.
